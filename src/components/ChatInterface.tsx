@@ -1,18 +1,21 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Settings, Loader2, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
+import ImageGenerationModal from './ImageGenerationModal';
+import { ImageGenerationService } from '../services/imageGeneration';
 
 export interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: Date;
+  imageUrl?: string;
+  isImageGeneration?: boolean;
 }
 
 const ChatInterface = () => {
@@ -20,7 +23,9 @@ const ChatInterface = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [imageApiKey, setImageApiKey] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -52,7 +57,7 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,6 +98,53 @@ const ChatInterface = () => {
     }
   };
 
+  const generateImage = async (prompt: string) => {
+    if (!imageApiKey) {
+      setShowImageModal(true);
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: `Generate image: ${prompt}`,
+      role: 'user',
+      timestamp: new Date(),
+      isImageGeneration: true,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const imageService = new ImageGenerationService(imageApiKey);
+      const result = await imageService.generateImage({ prompt });
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Generated image for: ${prompt}`,
+        role: 'assistant',
+        timestamp: new Date(),
+        imageUrl: result.imageURL,
+        isImageGeneration: true,
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      toast({
+        title: 'Image generated',
+        description: 'Your image has been generated successfully!',
+      });
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate image. Please check your API key and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -120,6 +172,14 @@ const ChatInterface = () => {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShowImageModal(true)}
+              className="text-white hover:bg-white/10"
+            >
+              <Image size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowApiModal(true)}
               className="text-white hover:bg-white/10"
             >
@@ -142,6 +202,7 @@ const ChatInterface = () => {
               <Bot className="text-blue-400 mb-4" size={48} />
               <h3 className="text-xl font-semibold text-white mb-2">Start a conversation</h3>
               <p className="text-slate-300">Ask me anything! I'm powered by Google's Gemini AI.</p>
+              <p className="text-slate-400 text-sm mt-2">Or generate images with AI!</p>
             </div>
           ) : (
             messages.map((message) => (
@@ -187,6 +248,14 @@ const ChatInterface = () => {
         onClose={() => setShowApiModal(false)}
         apiKey={apiKey}
         onSave={setApiKey}
+      />
+
+      <ImageGenerationModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        apiKey={imageApiKey}
+        onSave={setImageApiKey}
+        onGenerate={generateImage}
       />
     </div>
   );
