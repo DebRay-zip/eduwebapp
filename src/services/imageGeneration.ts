@@ -12,49 +12,18 @@ interface GeneratedImage {
 }
 
 export class ImageGenerationService {
-  private apiKey: string;
-
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
   async generateImage(params: GenerateImageParams): Promise<GeneratedImage> {
-    const response = await fetch('https://api.runware.ai/v1', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([
-        {
-          taskType: "authentication",
-          apiKey: this.apiKey
-        },
-        {
-          taskType: "imageInference",
-          taskUUID: crypto.randomUUID(),
-          positivePrompt: params.prompt,
-          width: params.width || 512,
-          height: params.height || 512,
-          model: params.model || "runware:100@1",
-          numberResults: 1,
-          outputFormat: "WEBP"
-        }
-      ])
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate image');
-    }
-
-    const data = await response.json();
-    const imageResult = data.data.find((item: any) => item.taskType === 'imageInference');
+    const width = params.width || 1024;
+    const height = params.height || 1024;
+    const model = params.model || 'flux';
     
-    if (!imageResult || !imageResult.imageURL) {
-      throw new Error('No image generated');
-    }
+    // Pollinations.ai uses a simple URL structure for image generation
+    const encodedPrompt = encodeURIComponent(params.prompt);
+    const imageURL = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${model}&nologo=true`;
 
+    // Since Pollinations returns the image directly, we just return the URL
     return {
-      imageURL: imageResult.imageURL,
+      imageURL,
       prompt: params.prompt
     };
   }

@@ -27,6 +27,19 @@ const MessageBubble = ({ message }: MessageBubbleProps) => {
             : 'bg-white/10 backdrop-blur-sm text-white border border-white/20'
         }`}>
           <p className="whitespace-pre-wrap">{message.content}</p>
+          {message.imageUrl && (
+            <div className="mt-3">
+              <img 
+                src={message.imageUrl} 
+                alt="Generated image" 
+                className="max-w-full h-auto rounded-lg border border-white/20"
+                onError={(e) => {
+                  console.error('Failed to load image:', message.imageUrl);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
         </div>
         <p className="text-xs text-slate-400 mt-1">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
