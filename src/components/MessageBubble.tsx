@@ -40,6 +40,21 @@ const MessageBubble = ({ message }: MessageBubbleProps) => {
               />
             </div>
           )}
+          {message.videoUrl && (
+            <div className="mt-3">
+              <video 
+                src={message.videoUrl} 
+                controls 
+                className="max-w-full h-auto rounded-lg border border-white/20"
+                onError={(e) => {
+                  console.error('Failed to load video:', message.videoUrl);
+                  e.currentTarget.style.display = 'none';
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
         </div>
         <p className="text-xs text-slate-400 mt-1">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

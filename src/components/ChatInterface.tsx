@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
 import { ImageGenerationService } from '../services/imageGeneration';
+import { VideoGenerationService } from '../services/videoGeneration';
 
 export interface Message {
   id: string;
@@ -15,14 +15,16 @@ export interface Message {
   role: 'user' | 'assistant';
   timestamp: Date;
   imageUrl?: string;
+  videoUrl?: string;
   isImageGeneration?: boolean;
+  isVideoGeneration?: boolean;
 }
 
 const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState('AIzaSyAQTZ59qjaSdtmlR6Ft33BrPWQ4kb6zUtY');
   const [showApiModal, setShowApiModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -43,6 +45,16 @@ const ChatInterface = () => {
            lowerMessage.startsWith('make image:');
   };
 
+  const isVideoGenerationRequest = (message: string) => {
+    const lowerMessage = message.toLowerCase().trim();
+    return lowerMessage.startsWith('/video ') || 
+           lowerMessage.startsWith('learn about ') ||
+           lowerMessage.startsWith('teach me about ') ||
+           lowerMessage.startsWith('explain ') ||
+           lowerMessage.startsWith('create video:') ||
+           lowerMessage.startsWith('generate video:');
+  };
+
   const extractImagePrompt = (message: string) => {
     const lowerMessage = message.toLowerCase().trim();
     if (lowerMessage.startsWith('/image ')) {
@@ -53,6 +65,24 @@ const ChatInterface = () => {
       return message.slice(13).trim();
     } else if (lowerMessage.startsWith('make image:')) {
       return message.slice(11).trim();
+    }
+    return message;
+  };
+
+  const extractVideoPrompt = (message: string) => {
+    const lowerMessage = message.toLowerCase().trim();
+    if (lowerMessage.startsWith('/video ')) {
+      return message.slice(7).trim();
+    } else if (lowerMessage.startsWith('learn about ')) {
+      return message.slice(12).trim();
+    } else if (lowerMessage.startsWith('teach me about ')) {
+      return message.slice(15).trim();
+    } else if (lowerMessage.startsWith('explain ')) {
+      return message.slice(8).trim();
+    } else if (lowerMessage.startsWith('create video:')) {
+      return message.slice(13).trim();
+    } else if (lowerMessage.startsWith('generate video:')) {
+      return message.slice(15).trim();
     }
     return message;
   };
@@ -99,9 +129,67 @@ const ChatInterface = () => {
     }
   };
 
+  const generateVideo = async (prompt: string) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: `Generate educational video: ${prompt}`,
+      role: 'user',
+      timestamp: new Date(),
+      isVideoGeneration: true,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const videoService = new VideoGenerationService();
+      const result = await videoService.generateVideo({ prompt });
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Generated educational video about: ${prompt}`,
+        role: 'assistant',
+        timestamp: new Date(),
+        videoUrl: result.videoURL,
+        isVideoGeneration: true,
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      toast({
+        title: 'Video generated',
+        description: 'Your educational video has been generated successfully!',
+      });
+    } catch (error) {
+      console.error('Error generating video:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate video. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
     
+    // Check if this is a video generation request
+    if (isVideoGenerationRequest(inputMessage)) {
+      const videoPrompt = extractVideoPrompt(inputMessage);
+      if (!videoPrompt) {
+        toast({
+          title: 'Error',
+          description: 'Please provide a topic for video generation',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setInputMessage('');
+      await generateVideo(videoPrompt);
+      return;
+    }
+
     // Check if this is an image generation request
     if (isImageGenerationRequest(inputMessage)) {
       const imagePrompt = extractImagePrompt(inputMessage);
@@ -226,9 +314,10 @@ const ChatInterface = () => {
               <Bot className="text-blue-400 mb-4" size={48} />
               <h3 className="text-xl font-semibold text-white mb-2">Start a conversation</h3>
               <p className="text-slate-300">Ask me anything! I'm powered by Google's Gemini AI.</p>
-              <p className="text-slate-400 text-sm mt-2">
-                Or generate images by typing: <span className="font-mono">/image [your prompt]</span>
-              </p>
+              <div className="text-slate-400 text-sm mt-2 space-y-1">
+                <p>Generate images: <span className="font-mono">/image [your prompt]</span></p>
+                <p>Learn topics: <span className="font-mono">learn about [topic]</span> or <span className="font-mono">/video [topic]</span></p>
+              </div>
             </div>
           ) : (
             messages.map((message) => (
@@ -250,7 +339,7 @@ const ChatInterface = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message or '/image [prompt]' to generate an image..."
+              placeholder="Type your message, '/image [prompt]' for images, or 'learn about [topic]' for videos..."
               className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-blue-400"
               disabled={isLoading}
             />
