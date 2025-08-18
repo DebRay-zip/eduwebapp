@@ -25,6 +25,7 @@ const ChatInterface = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('AIzaSyAQTZ59qjaSdtmlR6Ft33BrPWQ4kb6zUtY');
+  const [googleCloudApiKey, setGoogleCloudApiKey] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -143,11 +144,14 @@ const ChatInterface = () => {
 
     try {
       const videoService = new VideoGenerationService();
-      const result = await videoService.generateVideo({ prompt });
+      const result = await videoService.generateVideo({ 
+        prompt,
+        apiKey: googleCloudApiKey || undefined
+      });
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Generated educational video about: ${prompt}`,
+        content: `Generated educational video about: ${prompt}${!googleCloudApiKey ? ' (using free service)' : ' (using Google Veo)'}`,
         role: 'assistant',
         timestamp: new Date(),
         videoUrl: result.videoURL,
@@ -317,6 +321,7 @@ const ChatInterface = () => {
               <div className="text-slate-400 text-sm mt-2 space-y-1">
                 <p>Generate images: <span className="font-mono">/image [your prompt]</span></p>
                 <p>Learn topics: <span className="font-mono">learn about [topic]</span> or <span className="font-mono">/video [topic]</span></p>
+                <p className="text-xs text-slate-500">Note: Video generation uses free service by default. Add Google Cloud API key for Veo.</p>
               </div>
             </div>
           ) : (
@@ -363,6 +368,8 @@ const ChatInterface = () => {
         onClose={() => setShowApiModal(false)}
         apiKey={apiKey}
         onSave={setApiKey}
+        googleCloudApiKey={googleCloudApiKey}
+        onSaveGoogleCloud={setGoogleCloudApiKey}
       />
     </div>
   );
