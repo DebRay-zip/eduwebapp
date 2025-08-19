@@ -43,7 +43,10 @@ const ChatInterface = () => {
     return lowerMessage.startsWith('/image ') || 
            lowerMessage.startsWith('generate image:') || 
            lowerMessage.startsWith('create image:') ||
-           lowerMessage.startsWith('make image:');
+           lowerMessage.startsWith('make image:') ||
+           lowerMessage.startsWith('diagram of ') ||
+           lowerMessage.startsWith('illustration of ') ||
+           lowerMessage.startsWith('infographic about ');
   };
 
   const isVideoGenerationRequest = (message: string) => {
@@ -53,7 +56,9 @@ const ChatInterface = () => {
            lowerMessage.startsWith('teach me about ') ||
            lowerMessage.startsWith('explain ') ||
            lowerMessage.startsWith('create video:') ||
-           lowerMessage.startsWith('generate video:');
+           lowerMessage.startsWith('generate video:') ||
+           lowerMessage.startsWith('tutorial on ') ||
+           lowerMessage.startsWith('lesson about ');
   };
 
   const extractImagePrompt = (message: string) => {
@@ -91,7 +96,7 @@ const ChatInterface = () => {
   const generateImage = async (prompt: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: `Generate image: ${prompt}`,
+      content: `Generate educational image: ${prompt}`,
       role: 'user',
       timestamp: new Date(),
       isImageGeneration: true,
@@ -102,11 +107,20 @@ const ChatInterface = () => {
 
     try {
       const imageService = new ImageGenerationService();
-      const result = await imageService.generateImage({ prompt });
+      
+      // Determine education level and image type from prompt
+      const educationLevel = this.detectEducationLevel(prompt);
+      const imageType = this.detectImageType(prompt);
+      
+      const result = await imageService.generateImage({ 
+        prompt,
+        educationLevel,
+        imageType
+      });
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Generated image for: ${prompt}`,
+        content: `Generated educational ${imageType} for: ${prompt}`,
         role: 'assistant',
         timestamp: new Date(),
         imageUrl: result.imageURL,
@@ -115,14 +129,14 @@ const ChatInterface = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
       toast({
-        title: 'Image generated',
-        description: 'Your image has been generated successfully!',
+        title: 'Educational image generated',
+        description: 'Your educational image has been created successfully!',
       });
     } catch (error) {
       console.error('Error generating image:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate image. Please try again.',
+        description: 'Failed to generate educational image. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -144,14 +158,21 @@ const ChatInterface = () => {
 
     try {
       const videoService = new VideoGenerationService();
+      
+      // Determine education level and subject from prompt
+      const educationLevel = this.detectEducationLevel(prompt);
+      const subject = this.detectSubject(prompt);
+      
       const result = await videoService.generateVideo({ 
         prompt,
-        apiKey: googleCloudApiKey || undefined
+        apiKey: googleCloudApiKey || undefined,
+        educationLevel,
+        subject
       });
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Generated educational video about: ${prompt}${!googleCloudApiKey ? ' (using free service)' : ' (using Google Veo)'}`,
+        content: `Generated educational video about: ${prompt} (${educationLevel} level)${!googleCloudApiKey ? ' (using free service)' : ' (using Google Veo)'}`,
         role: 'assistant',
         timestamp: new Date(),
         videoUrl: result.videoURL,
@@ -160,19 +181,49 @@ const ChatInterface = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
       toast({
-        title: 'Video generated',
-        description: 'Your educational video has been generated successfully!',
+        title: 'Educational video generated',
+        description: 'Your educational video has been created successfully!',
       });
     } catch (error) {
       console.error('Error generating video:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate video. Please try again.',
+        description: 'Failed to generate educational video. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const detectEducationLevel = (prompt: string): 'elementary' | 'middle' | 'high' | 'college' | 'adult' => {
+    const lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.includes('elementary') || lowerPrompt.includes('kids') || lowerPrompt.includes('children')) return 'elementary';
+    if (lowerPrompt.includes('middle school') || lowerPrompt.includes('junior high')) return 'middle';
+    if (lowerPrompt.includes('high school') || lowerPrompt.includes('teenager')) return 'high';
+    if (lowerPrompt.includes('college') || lowerPrompt.includes('university') || lowerPrompt.includes('undergraduate')) return 'college';
+    return 'adult';
+  };
+
+  const detectImageType = (prompt: string): 'diagram' | 'illustration' | 'infographic' | 'chart' | 'concept' => {
+    const lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.includes('diagram') || lowerPrompt.includes('flowchart')) return 'diagram';
+    if (lowerPrompt.includes('infographic') || lowerPrompt.includes('statistics')) return 'infographic';
+    if (lowerPrompt.includes('chart') || lowerPrompt.includes('graph') || lowerPrompt.includes('data')) return 'chart';
+    if (lowerPrompt.includes('concept') || lowerPrompt.includes('abstract')) return 'concept';
+    return 'illustration';
+  };
+
+  const detectSubject = (prompt: string): string => {
+    const lowerPrompt = prompt.toLowerCase();
+    const subjects = ['math', 'science', 'history', 'english', 'art', 'music', 'physics', 'chemistry', 'biology', 'geography', 'literature', 'computer science', 'programming'];
+    
+    for (const subject of subjects) {
+      if (lowerPrompt.includes(subject)) {
+        return subject;
+      }
+    }
+    return 'general';
   };
 
   const sendMessage = async () => {
@@ -290,7 +341,7 @@ const ChatInterface = () => {
         <div className="flex items-center justify-between p-4 border-b border-white/20">
           <div className="flex items-center gap-2">
             <Bot className="text-blue-400" size={24} />
-            <h2 className="text-xl font-semibold text-white">AI Assistant</h2>
+            <h2 className="text-xl font-semibold text-white">Educational AI Assistant</h2>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -316,12 +367,13 @@ const ChatInterface = () => {
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Bot className="text-blue-400 mb-4" size={48} />
-              <h3 className="text-xl font-semibold text-white mb-2">Start a conversation</h3>
-              <p className="text-slate-300">Ask me anything! I'm powered by Google's Gemini AI.</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Start Learning</h3>
+              <p className="text-slate-300">Ask me to explain concepts, generate educational content, or create learning materials!</p>
               <div className="text-slate-400 text-sm mt-2 space-y-1">
-                <p>Generate images: <span className="font-mono">/image [your prompt]</span></p>
-                <p>Learn topics: <span className="font-mono">learn about [topic]</span> or <span className="font-mono">/video [topic]</span></p>
-                <p className="text-xs text-slate-500">Note: Video generation uses free service by default. Add Google Cloud API key for Veo.</p>
+                <p>Educational images: <span className="font-mono">diagram of [topic]</span> or <span className="font-mono">/image [description]</span></p>
+                <p>Learning videos: <span className="font-mono">teach me about [topic]</span> or <span className="font-mono">tutorial on [subject]</span></p>
+                <p>Chat: Ask questions about any educational topic</p>
+                <p className="text-xs text-slate-500">Content automatically adapts to different education levels</p>
               </div>
             </div>
           ) : (
@@ -332,7 +384,7 @@ const ChatInterface = () => {
           {isLoading && (
             <div className="flex items-center gap-2 text-slate-300">
               <Loader2 className="animate-spin" size={16} />
-              <span>AI is thinking...</span>
+              <span>Creating educational content...</span>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -344,7 +396,7 @@ const ChatInterface = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message, '/image [prompt]' for images, or 'learn about [topic]' for videos..."
+              placeholder="Ask educational questions, request 'diagram of [topic]', or 'teach me about [subject]'..."
               className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-blue-400"
               disabled={isLoading}
             />
