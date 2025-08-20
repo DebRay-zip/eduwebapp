@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Settings, Loader2, BookOpen, PenTool, Video, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
@@ -37,6 +37,36 @@ const ChatInterface = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const detectEducationLevel = (prompt: string): 'elementary' | 'middle' | 'high' | 'college' | 'adult' => {
+    const lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.includes('elementary') || lowerPrompt.includes('kids') || lowerPrompt.includes('children')) return 'elementary';
+    if (lowerPrompt.includes('middle school') || lowerPrompt.includes('junior high')) return 'middle';
+    if (lowerPrompt.includes('high school') || lowerPrompt.includes('teenager')) return 'high';
+    if (lowerPrompt.includes('college') || lowerPrompt.includes('university') || lowerPrompt.includes('undergraduate')) return 'college';
+    return 'adult';
+  };
+
+  const detectImageType = (prompt: string): 'diagram' | 'illustration' | 'infographic' | 'chart' | 'concept' => {
+    const lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.includes('diagram') || lowerPrompt.includes('flowchart')) return 'diagram';
+    if (lowerPrompt.includes('infographic') || lowerPrompt.includes('statistics')) return 'infographic';
+    if (lowerPrompt.includes('chart') || lowerPrompt.includes('graph') || lowerPrompt.includes('data')) return 'chart';
+    if (lowerPrompt.includes('concept') || lowerPrompt.includes('abstract')) return 'concept';
+    return 'illustration';
+  };
+
+  const detectSubject = (prompt: string): string => {
+    const lowerPrompt = prompt.toLowerCase();
+    const subjects = ['math', 'science', 'history', 'english', 'art', 'music', 'physics', 'chemistry', 'biology', 'geography', 'literature', 'computer science', 'programming'];
+    
+    for (const subject of subjects) {
+      if (lowerPrompt.includes(subject)) {
+        return subject;
+      }
+    }
+    return 'general';
+  };
 
   const isImageGenerationRequest = (message: string) => {
     const lowerMessage = message.toLowerCase().trim();
@@ -108,9 +138,8 @@ const ChatInterface = () => {
     try {
       const imageService = new ImageGenerationService();
       
-      // Determine education level and image type from prompt
-      const educationLevel = this.detectEducationLevel(prompt);
-      const imageType = this.detectImageType(prompt);
+      const educationLevel = detectEducationLevel(prompt);
+      const imageType = detectImageType(prompt);
       
       const result = await imageService.generateImage({ 
         prompt,
@@ -159,9 +188,8 @@ const ChatInterface = () => {
     try {
       const videoService = new VideoGenerationService();
       
-      // Determine education level and subject from prompt
-      const educationLevel = this.detectEducationLevel(prompt);
-      const subject = this.detectSubject(prompt);
+      const educationLevel = detectEducationLevel(prompt);
+      const subject = detectSubject(prompt);
       
       const result = await videoService.generateVideo({ 
         prompt,
@@ -196,40 +224,9 @@ const ChatInterface = () => {
     }
   };
 
-  const detectEducationLevel = (prompt: string): 'elementary' | 'middle' | 'high' | 'college' | 'adult' => {
-    const lowerPrompt = prompt.toLowerCase();
-    if (lowerPrompt.includes('elementary') || lowerPrompt.includes('kids') || lowerPrompt.includes('children')) return 'elementary';
-    if (lowerPrompt.includes('middle school') || lowerPrompt.includes('junior high')) return 'middle';
-    if (lowerPrompt.includes('high school') || lowerPrompt.includes('teenager')) return 'high';
-    if (lowerPrompt.includes('college') || lowerPrompt.includes('university') || lowerPrompt.includes('undergraduate')) return 'college';
-    return 'adult';
-  };
-
-  const detectImageType = (prompt: string): 'diagram' | 'illustration' | 'infographic' | 'chart' | 'concept' => {
-    const lowerPrompt = prompt.toLowerCase();
-    if (lowerPrompt.includes('diagram') || lowerPrompt.includes('flowchart')) return 'diagram';
-    if (lowerPrompt.includes('infographic') || lowerPrompt.includes('statistics')) return 'infographic';
-    if (lowerPrompt.includes('chart') || lowerPrompt.includes('graph') || lowerPrompt.includes('data')) return 'chart';
-    if (lowerPrompt.includes('concept') || lowerPrompt.includes('abstract')) return 'concept';
-    return 'illustration';
-  };
-
-  const detectSubject = (prompt: string): string => {
-    const lowerPrompt = prompt.toLowerCase();
-    const subjects = ['math', 'science', 'history', 'english', 'art', 'music', 'physics', 'chemistry', 'biology', 'geography', 'literature', 'computer science', 'programming'];
-    
-    for (const subject of subjects) {
-      if (lowerPrompt.includes(subject)) {
-        return subject;
-      }
-    }
-    return 'general';
-  };
-
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
     
-    // Check if this is a video generation request
     if (isVideoGenerationRequest(inputMessage)) {
       const videoPrompt = extractVideoPrompt(inputMessage);
       if (!videoPrompt) {
@@ -245,7 +242,6 @@ const ChatInterface = () => {
       return;
     }
 
-    // Check if this is an image generation request
     if (isImageGenerationRequest(inputMessage)) {
       const imagePrompt = extractImagePrompt(inputMessage);
       if (!imagePrompt) {
@@ -261,7 +257,6 @@ const ChatInterface = () => {
       return;
     }
 
-    // Regular chat message
     if (!apiKey) {
       setShowApiModal(true);
       return;
@@ -336,44 +331,124 @@ const ChatInterface = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
-        <div className="flex items-center justify-between p-4 border-b border-white/20">
-          <div className="flex items-center gap-2">
-            <Bot className="text-blue-400" size={24} />
-            <h2 className="text-xl font-semibold text-white">Educational AI Assistant</h2>
+    <div className="max-w-5xl mx-auto">
+      {/* Classroom Header with chalkboard feel */}
+      <div className="mb-6 p-6 bg-gradient-to-r from-green-800 to-green-900 rounded-lg shadow-lg border-4 border-amber-600">
+        <div className="flex items-center justify-center gap-4 text-center">
+          <div className="p-3 bg-amber-100 rounded-full shadow-md">
+            <BookOpen className="text-green-800" size={32} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-amber-100 mb-2 font-serif">
+              🍎 Virtual Classroom Assistant
+            </h1>
+            <p className="text-amber-200 text-lg">
+              Your AI Teacher for Interactive Learning
+            </p>
+          </div>
+        </div>
+        
+        {/* Quick action buttons */}
+        <div className="flex justify-center gap-4 mt-4">
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
+            <Image className="text-amber-200" size={16} />
+            <span className="text-amber-200 text-sm">Visual Learning</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
+            <Video className="text-amber-200" size={16} />
+            <span className="text-amber-200 text-sm">Video Lessons</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
+            <PenTool className="text-amber-200" size={16} />
+            <span className="text-amber-200 text-sm">Interactive Chat</span>
+          </div>
+        </div>
+      </div>
+
+      <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 shadow-xl">
+        {/* Header with classroom controls */}
+        <div className="flex items-center justify-between p-4 border-b-2 border-amber-200 bg-gradient-to-r from-amber-100 to-orange-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-700 rounded-full">
+              <Bot className="text-amber-100" size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-green-800 font-serif">Teacher AI</h2>
+            <div className="hidden sm:flex items-center gap-2 text-sm text-green-700">
+              <span className="px-2 py-1 bg-green-100 rounded-full">📚 Ready to Learn</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowApiModal(true)}
-              className="text-white hover:bg-white/10"
+              className="text-green-700 hover:bg-amber-200/50 border border-amber-300"
             >
               <Settings size={16} />
+              <span className="hidden sm:inline ml-1">Settings</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={clearChat}
-              className="text-white hover:bg-white/10"
+              className="text-green-700 hover:bg-amber-200/50 border border-amber-300"
             >
-              Clear
+              Clear Board
             </Button>
           </div>
         </div>
 
-        <div className="h-96 overflow-y-auto p-4 space-y-4">
+        {/* Main chat area with classroom styling */}
+        <div className="h-96 overflow-y-auto p-6 space-y-4 bg-gradient-to-br from-amber-25 to-orange-25">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <Bot className="text-blue-400 mb-4" size={48} />
-              <h3 className="text-xl font-semibold text-white mb-2">Start Learning</h3>
-              <p className="text-slate-300">Ask me to explain concepts, generate educational content, or create learning materials!</p>
-              <div className="text-slate-400 text-sm mt-2 space-y-1">
-                <p>Educational images: <span className="font-mono">diagram of [topic]</span> or <span className="font-mono">/image [description]</span></p>
-                <p>Learning videos: <span className="font-mono">teach me about [topic]</span> or <span className="font-mono">tutorial on [subject]</span></p>
-                <p>Chat: Ask questions about any educational topic</p>
-                <p className="text-xs text-slate-500">Content automatically adapts to different education levels</p>
+              <div className="p-6 bg-white rounded-full shadow-lg mb-4 border-4 border-amber-300">
+                <BookOpen className="text-green-700" size={48} />
+              </div>
+              <h3 className="text-2xl font-bold text-green-800 mb-3 font-serif">Welcome to Class! 🎓</h3>
+              <p className="text-green-700 text-lg mb-4 max-w-md">
+                Ready to explore, learn, and discover? Ask me anything!
+              </p>
+              
+              {/* Educational prompts in classroom style */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 w-full max-w-2xl">
+                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-blue-500">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Image className="text-blue-600" size={20} />
+                    <span className="font-semibold text-blue-800">Visual Learning</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Create educational diagrams and illustrations</p>
+                  <code className="text-xs bg-blue-50 px-2 py-1 rounded text-blue-700">
+                    "diagram of photosynthesis"
+                  </code>
+                </div>
+                
+                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-purple-500">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Video className="text-purple-600" size={20} />
+                    <span className="font-semibold text-purple-800">Video Lessons</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Generate educational video content</p>
+                  <code className="text-xs bg-purple-50 px-2 py-1 rounded text-purple-700">
+                    "teach me about algebra"
+                  </code>
+                </div>
+                
+                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-green-500 md:col-span-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PenTool className="text-green-600" size={20} />
+                    <span className="font-semibold text-green-800">Interactive Discussion</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Ask questions about any educational topic</p>
+                  <div className="flex flex-wrap gap-2">
+                    <code className="text-xs bg-green-50 px-2 py-1 rounded text-green-700">
+                      "How does gravity work?"
+                    </code>
+                    <code className="text-xs bg-green-50 px-2 py-1 rounded text-green-700">
+                      "Explain Shakespeare"
+                    </code>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -382,36 +457,43 @@ const ChatInterface = () => {
             ))
           )}
           {isLoading && (
-            <div className="flex items-center gap-2 text-slate-300">
-              <Loader2 className="animate-spin" size={16} />
-              <span>Creating educational content...</span>
+            <div className="flex items-center justify-center gap-3 p-4 bg-white/80 rounded-lg shadow-md border border-amber-200">
+              <Loader2 className="animate-spin text-green-600" size={20} />
+              <span className="text-green-700 font-medium">Teacher is preparing your lesson...</span>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-white/20">
-          <div className="flex gap-2">
+        {/* Input area with classroom styling */}
+        <div className="p-4 border-t-2 border-amber-200 bg-gradient-to-r from-amber-100 to-orange-100">
+          <div className="flex gap-3">
             <Input
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask educational questions, request 'diagram of [topic]', or 'teach me about [subject]'..."
-              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-blue-400"
+              placeholder="Ask your teacher a question, request a diagram, or say 'teach me about...' 📝"
+              className="flex-1 bg-white border-2 border-amber-300 text-green-800 placeholder:text-green-600/70 focus:border-green-500 focus:ring-green-500 rounded-lg text-base py-3"
               disabled={isLoading}
             />
             <Button
               onClick={sendMessage}
               disabled={isLoading || !inputMessage.trim()}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg shadow-md border border-green-800 font-medium"
             >
               {isLoading ? (
-                <Loader2 className="animate-spin" size={16} />
+                <Loader2 className="animate-spin" size={18} />
               ) : (
-                <Send size={16} />
+                <>
+                  <Send size={18} />
+                  <span className="hidden sm:inline ml-2">Ask</span>
+                </>
               )}
             </Button>
           </div>
+          <p className="text-xs text-green-600 mt-2 text-center">
+            💡 Tip: Content automatically adapts to different education levels
+          </p>
         </div>
       </Card>
 
