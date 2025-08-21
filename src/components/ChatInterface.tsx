@@ -111,26 +111,14 @@ const ChatInterface = () => {
   };
 
   const isImageGenerationRequest = (message: string) => {
-    const lowerMessage = message.toLowerCase().trim();
-    return lowerMessage.startsWith('/image ') || 
-           lowerMessage.startsWith('generate image:') || 
-           lowerMessage.startsWith('create image:') ||
-           lowerMessage.startsWith('make image:') ||
-           lowerMessage.startsWith('diagram of ') ||
-           lowerMessage.startsWith('illustration of ') ||
-           lowerMessage.startsWith('infographic about ');
+    const trimmedMessage = message.trim();
+    return trimmedMessage.startsWith('image/');
   };
 
   const extractImagePrompt = (message: string) => {
-    const lowerMessage = message.toLowerCase().trim();
-    if (lowerMessage.startsWith('/image ')) {
-      return message.slice(7).trim();
-    } else if (lowerMessage.startsWith('generate image:')) {
-      return message.slice(15).trim();
-    } else if (lowerMessage.startsWith('create image:')) {
-      return message.slice(13).trim();
-    } else if (lowerMessage.startsWith('make image:')) {
-      return message.slice(11).trim();
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.startsWith('image/')) {
+      return trimmedMessage.slice(6).trim();
     }
     return message;
   };
@@ -422,7 +410,7 @@ const ChatInterface = () => {
             </Button>
           </div>
           <p className="text-xs text-green-600 mt-2 text-center">
-            💡 Tip: Click suggestions above or use quick actions for instant help!
+            💡 Tip: Click suggestions above or use quick actions for instant help! Use "image/" to generate educational images.
           </p>
         </div>
       </Card>

@@ -31,9 +31,6 @@ const Index = () => {
             <div className="px-4 py-2 bg-blue-100 rounded-full border-2 border-blue-300 shadow-sm">
               <span className="text-blue-700 font-medium text-sm">🎨 Visual Learning</span>
             </div>
-            <div className="px-4 py-2 bg-purple-100 rounded-full border-2 border-purple-300 shadow-sm">
-              <span className="text-purple-700 font-medium text-sm">🎬 Interactive Videos</span>
-            </div>
             <div className="px-4 py-2 bg-green-100 rounded-full border-2 border-green-300 shadow-sm">
               <span className="text-green-700 font-medium text-sm">💬 Smart Tutoring</span>
             </div>

@@ -31,13 +31,9 @@ const MessageBubble = ({ message }: MessageBubbleProps) => {
             : 'bg-white border-amber-200 text-green-800'
         }`}>
           {/* Message type indicator */}
-          {(message.isImageGeneration || message.isVideoGeneration) && (
-            <div className={`text-xs font-semibold mb-2 px-2 py-1 rounded-full inline-block ${
-              message.isImageGeneration 
-                ? 'bg-purple-100 text-purple-700'
-                : 'bg-orange-100 text-orange-700'
-            }`}>
-              {message.isImageGeneration ? '🎨 Visual Learning' : '🎬 Video Lesson'}
+          {message.isImageGeneration && (
+            <div className="text-xs font-semibold mb-2 px-2 py-1 rounded-full inline-block bg-purple-100 text-purple-700">
+              🎨 Visual Learning
             </div>
           )}
           
@@ -60,24 +56,6 @@ const MessageBubble = ({ message }: MessageBubbleProps) => {
             </div>
           )}
           
-          {message.videoUrl && (
-            <div className="mt-4 p-2 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border-2 border-orange-200">
-              <video 
-                src={message.videoUrl} 
-                controls 
-                className="max-w-full h-auto rounded-lg shadow-md border border-orange-300"
-                onError={(e) => {
-                  console.error('Failed to load video:', message.videoUrl);
-                  e.currentTarget.style.display = 'none';
-                }}
-              >
-                Your browser does not support the video tag.
-              </video>
-              <p className="text-xs text-orange-600 mt-2 text-center font-medium">
-                🎓 Educational Video Lesson
-              </p>
-            </div>
-          )}
         </div>
         
         <div className={`text-xs mt-2 flex items-center gap-2 ${
