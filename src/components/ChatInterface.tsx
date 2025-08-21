@@ -2,14 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Loader2, BookOpen, PenTool, Video, Image, Lightbulb, Calculator, Globe, Microscope, Palette, Music } from 'lucide-react';
+import { Send, Bot, User, Settings, Loader2, BookOpen, PenTool, Image, Lightbulb, Calculator, Globe, Microscope, Palette, Music } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
 import InteractiveSuggestions from './InteractiveSuggestions';
 import TypingIndicator from './TypingIndicator';
 import { ImageGenerationService } from '../services/imageGeneration';
-import { VideoGenerationService } from '../services/videoGeneration';
 
 export interface Message {
   id: string;
@@ -17,9 +16,7 @@ export interface Message {
   role: 'user' | 'assistant';
   timestamp: Date;
   imageUrl?: string;
-  videoUrl?: string;
   isImageGeneration?: boolean;
-  isVideoGeneration?: boolean;
 }
 
 const ChatInterface = () => {
@@ -124,18 +121,6 @@ const ChatInterface = () => {
            lowerMessage.startsWith('infographic about ');
   };
 
-  const isVideoGenerationRequest = (message: string) => {
-    const lowerMessage = message.toLowerCase().trim();
-    return lowerMessage.startsWith('/video ') || 
-           lowerMessage.startsWith('learn about ') ||
-           lowerMessage.startsWith('teach me about ') ||
-           lowerMessage.startsWith('explain ') ||
-           lowerMessage.startsWith('create video:') ||
-           lowerMessage.startsWith('generate video:') ||
-           lowerMessage.startsWith('tutorial on ') ||
-           lowerMessage.startsWith('lesson about ');
-  };
-
   const extractImagePrompt = (message: string) => {
     const lowerMessage = message.toLowerCase().trim();
     if (lowerMessage.startsWith('/image ')) {
@@ -146,24 +131,6 @@ const ChatInterface = () => {
       return message.slice(13).trim();
     } else if (lowerMessage.startsWith('make image:')) {
       return message.slice(11).trim();
-    }
-    return message;
-  };
-
-  const extractVideoPrompt = (message: string) => {
-    const lowerMessage = message.toLowerCase().trim();
-    if (lowerMessage.startsWith('/video ')) {
-      return message.slice(7).trim();
-    } else if (lowerMessage.startsWith('learn about ')) {
-      return message.slice(12).trim();
-    } else if (lowerMessage.startsWith('teach me about ')) {
-      return message.slice(15).trim();
-    } else if (lowerMessage.startsWith('explain ')) {
-      return message.slice(8).trim();
-    } else if (lowerMessage.startsWith('create video:')) {
-      return message.slice(13).trim();
-    } else if (lowerMessage.startsWith('generate video:')) {
-      return message.slice(15).trim();
     }
     return message;
   };
@@ -218,79 +185,11 @@ const ChatInterface = () => {
     }
   };
 
-  const generateVideo = async (prompt: string) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: `Generate educational video: ${prompt}`,
-      role: 'user',
-      timestamp: new Date(),
-      isVideoGeneration: true,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
-    try {
-      const videoService = new VideoGenerationService();
-      
-      const educationLevel = detectEducationLevel(prompt);
-      const subject = detectSubject(prompt);
-      
-      const result = await videoService.generateVideo({ 
-        prompt,
-        apiKey: googleCloudApiKey || undefined,
-        educationLevel,
-        subject
-      });
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: `Generated educational video about: ${prompt} (${educationLevel} level)${!googleCloudApiKey ? ' (using free service)' : ' (using Google Veo)'}`,
-        role: 'assistant',
-        timestamp: new Date(),
-        videoUrl: result.videoURL,
-        isVideoGeneration: true,
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-      toast({
-        title: 'Educational video generated',
-        description: 'Your educational video has been created successfully!',
-      });
-    } catch (error) {
-      console.error('Error generating video:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate educational video. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
     
     setIsTyping(true);
     
-    if (isVideoGenerationRequest(inputMessage)) {
-      const videoPrompt = extractVideoPrompt(inputMessage);
-      if (!videoPrompt) {
-        toast({
-          title: 'Error',
-          description: 'Please provide a topic for video generation',
-          variant: 'destructive',
-        });
-        setIsTyping(false);
-        return;
-      }
-      setInputMessage('');
-      await generateVideo(videoPrompt);
-      setIsTyping(false);
-      return;
-    }
-
     if (isImageGenerationRequest(inputMessage)) {
       const imagePrompt = extractImagePrompt(inputMessage);
       if (!imagePrompt) {
@@ -503,7 +402,7 @@ const ChatInterface = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask your teacher a question, request a diagram, or say 'teach me about...' 📝"
+              placeholder="Ask your teacher a question or request a diagram 📝"
               className="flex-1 bg-white border-2 border-amber-300 text-green-800 placeholder:text-green-600/70 focus:border-green-500 focus:ring-green-500 rounded-lg text-base py-3"
               disabled={isLoading}
             />
