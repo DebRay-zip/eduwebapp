@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Loader2, BookOpen, PenTool, Video, Image } from 'lucide-react';
+import { Send, Bot, User, Settings, Loader2, BookOpen, PenTool, Video, Image, Lightbulb, Calculator, Globe, Microscope, Palette, Music } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
+import InteractiveSuggestions from './InteractiveSuggestions';
+import TypingIndicator from './TypingIndicator';
 import { ImageGenerationService } from '../services/imageGeneration';
 import { VideoGenerationService } from '../services/videoGeneration';
 
@@ -24,11 +26,36 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [apiKey, setApiKey] = useState('AIzaSyAQTZ59qjaSdtmlR6Ft33BrPWQ4kb6zUtY');
   const [googleCloudApiKey, setGoogleCloudApiKey] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
+  const [currentSubject, setCurrentSubject] = useState<string>('general');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Load messages from localStorage on component mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem('classroom-chat-messages');
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(parsedMessages);
+      } catch (error) {
+        console.error('Error loading saved messages:', error);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('classroom-chat-messages', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,10 +89,28 @@ const ChatInterface = () => {
     
     for (const subject of subjects) {
       if (lowerPrompt.includes(subject)) {
+        setCurrentSubject(subject);
         return subject;
       }
     }
     return 'general';
+  };
+
+  const quickActions = [
+    { icon: Calculator, label: 'Math Help', prompt: 'Help me solve a math problem' },
+    { icon: Microscope, label: 'Science', prompt: 'Explain a science concept' },
+    { icon: Globe, label: 'Geography', prompt: 'Teach me about world geography' },
+    { icon: BookOpen, label: 'Literature', prompt: 'Analyze a piece of literature' },
+    { icon: Palette, label: 'Art History', prompt: 'Tell me about famous artists' },
+    { icon: Music, label: 'Music Theory', prompt: 'Explain music theory basics' },
+  ];
+
+  const handleQuickAction = (prompt: string) => {
+    setInputMessage(prompt);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputMessage(suggestion);
   };
 
   const isImageGenerationRequest = (message: string) => {
@@ -227,6 +272,8 @@ const ChatInterface = () => {
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
     
+    setIsTyping(true);
+    
     if (isVideoGenerationRequest(inputMessage)) {
       const videoPrompt = extractVideoPrompt(inputMessage);
       if (!videoPrompt) {
@@ -235,10 +282,12 @@ const ChatInterface = () => {
           description: 'Please provide a topic for video generation',
           variant: 'destructive',
         });
+        setIsTyping(false);
         return;
       }
       setInputMessage('');
       await generateVideo(videoPrompt);
+      setIsTyping(false);
       return;
     }
 
@@ -250,15 +299,18 @@ const ChatInterface = () => {
           description: 'Please provide a prompt for image generation',
           variant: 'destructive',
         });
+        setIsTyping(false);
         return;
       }
       setInputMessage('');
       await generateImage(imagePrompt);
+      setIsTyping(false);
       return;
     }
 
     if (!apiKey) {
       setShowApiModal(true);
+      setIsTyping(false);
       return;
     }
 
@@ -272,6 +324,9 @@ const ChatInterface = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+
+    // Detect subject for future suggestions
+    detectSubject(inputMessage);
 
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
@@ -312,6 +367,7 @@ const ChatInterface = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsTyping(false);
     }
   };
 
@@ -324,9 +380,11 @@ const ChatInterface = () => {
 
   const clearChat = () => {
     setMessages([]);
+    setCurrentSubject('general');
+    localStorage.removeItem('classroom-chat-messages');
     toast({
-      title: 'Chat cleared',
-      description: 'All messages have been removed.',
+      title: 'Board cleared',
+      description: 'All messages have been erased from the chalkboard.',
     });
   };
 
@@ -343,25 +401,23 @@ const ChatInterface = () => {
               🍎 Virtual Classroom Assistant
             </h1>
             <p className="text-amber-200 text-lg">
-              Your AI Teacher for Interactive Learning
+              Your Interactive AI Teacher
             </p>
           </div>
         </div>
         
         {/* Quick action buttons */}
-        <div className="flex justify-center gap-4 mt-4">
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
-            <Image className="text-amber-200" size={16} />
-            <span className="text-amber-200 text-sm">Visual Learning</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
-            <Video className="text-amber-200" size={16} />
-            <span className="text-amber-200 text-sm">Video Lessons</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm">
-            <PenTool className="text-amber-200" size={16} />
-            <span className="text-amber-200 text-sm">Interactive Chat</span>
-          </div>
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
+          {quickActions.map((action, index) => (
+            <button
+              key={index}
+              onClick={() => handleQuickAction(action.prompt)}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-100/20 rounded-lg backdrop-blur-sm hover:bg-amber-100/30 transition-colors"
+            >
+              <action.icon className="text-amber-200" size={16} />
+              <span className="text-amber-200 text-sm">{action.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -374,7 +430,9 @@ const ChatInterface = () => {
             </div>
             <h2 className="text-xl font-bold text-green-800 font-serif">Teacher AI</h2>
             <div className="hidden sm:flex items-center gap-2 text-sm text-green-700">
-              <span className="px-2 py-1 bg-green-100 rounded-full">📚 Ready to Learn</span>
+              <span className="px-2 py-1 bg-green-100 rounded-full">
+                📚 {currentSubject === 'general' ? 'Ready to Learn' : `Studying ${currentSubject}`}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -407,61 +465,34 @@ const ChatInterface = () => {
               </div>
               <h3 className="text-2xl font-bold text-green-800 mb-3 font-serif">Welcome to Class! 🎓</h3>
               <p className="text-green-700 text-lg mb-4 max-w-md">
-                Ready to explore, learn, and discover? Ask me anything!
+                Ready to explore, learn, and discover? Click a suggestion or ask me anything!
               </p>
               
-              {/* Educational prompts in classroom style */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 w-full max-w-2xl">
-                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-blue-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Image className="text-blue-600" size={20} />
-                    <span className="font-semibold text-blue-800">Visual Learning</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Create educational diagrams and illustrations</p>
-                  <code className="text-xs bg-blue-50 px-2 py-1 rounded text-blue-700">
-                    "diagram of photosynthesis"
-                  </code>
-                </div>
-                
-                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-purple-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Video className="text-purple-600" size={20} />
-                    <span className="font-semibold text-purple-800">Video Lessons</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Generate educational video content</p>
-                  <code className="text-xs bg-purple-50 px-2 py-1 rounded text-purple-700">
-                    "teach me about algebra"
-                  </code>
-                </div>
-                
-                <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-green-500 md:col-span-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PenTool className="text-green-600" size={20} />
-                    <span className="font-semibold text-green-800">Interactive Discussion</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Ask questions about any educational topic</p>
-                  <div className="flex flex-wrap gap-2">
-                    <code className="text-xs bg-green-50 px-2 py-1 rounded text-green-700">
-                      "How does gravity work?"
-                    </code>
-                    <code className="text-xs bg-green-50 px-2 py-1 rounded text-green-700">
-                      "Explain Shakespeare"
-                    </code>
-                  </div>
-                </div>
-              </div>
+              <InteractiveSuggestions 
+                currentSubject={currentSubject}
+                onSuggestionClick={handleSuggestionClick}
+              />
             </div>
           ) : (
-            messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))
+            <>
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              
+              {/* Interactive suggestions after messages */}
+              {messages.length > 0 && !isLoading && !isTyping && (
+                <div className="mt-6">
+                  <InteractiveSuggestions 
+                    currentSubject={currentSubject}
+                    onSuggestionClick={handleSuggestionClick}
+                    compact={true}
+                  />
+                </div>
+              )}
+            </>
           )}
-          {isLoading && (
-            <div className="flex items-center justify-center gap-3 p-4 bg-white/80 rounded-lg shadow-md border border-amber-200">
-              <Loader2 className="animate-spin text-green-600" size={20} />
-              <span className="text-green-700 font-medium">Teacher is preparing your lesson...</span>
-            </div>
-          )}
+          
+          {(isLoading || isTyping) && <TypingIndicator />}
           <div ref={messagesEndRef} />
         </div>
 
@@ -492,7 +523,7 @@ const ChatInterface = () => {
             </Button>
           </div>
           <p className="text-xs text-green-600 mt-2 text-center">
-            💡 Tip: Content automatically adapts to different education levels
+            💡 Tip: Click suggestions above or use quick actions for instant help!
           </p>
         </div>
       </Card>
