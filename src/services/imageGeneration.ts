@@ -14,36 +14,53 @@ interface GeneratedImage {
 }
 
 export class ImageGenerationService {
+  private imageCounter = 0;
+
   async generateImage(params: GenerateImageParams): Promise<GeneratedImage> {
     const width = params.width || 1024;
     const height = params.height || 1024;
-    const model = params.model || 'flux';
     const educationLevel = params.educationLevel || 'adult';
     const imageType = params.imageType || 'illustration';
     
     // Create educational-focused prompt
     const educationalPrompt = this.createEducationalImagePrompt(params.prompt, educationLevel, imageType);
     
-    // Use Pollinations.ai with improved URL structure
-    const encodedPrompt = encodeURIComponent(educationalPrompt);
+    // Generate unique filename
+    this.imageCounter++;
+    const timestamp = Date.now();
+    const filename = `educational-${imageType}-${timestamp}-${this.imageCounter}.jpg`;
+    const targetPath = `src/assets/generated/${filename}`;
     
-    // Try different Pollinations endpoints for better reliability
-    const possibleUrls = [
-      `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${model}&nologo=true`,
-      `https://pollinations.ai/p/${encodedPrompt}?width=${width}&height=${height}&model=${model}`,
-      `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}`
-    ];
+    try {
+      // Use Lovable's native image generation
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: educationalPrompt,
+          width,
+          height,
+          model: 'flux.schnell',
+          target_path: targetPath
+        }),
+      });
 
-    // Use the first URL as primary
-    const imageURL = possibleUrls[0];
+      if (!response.ok) {
+        throw new Error('Failed to generate image');
+      }
 
-    // Add a small delay to ensure the image is generated
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    return {
-      imageURL,
-      prompt: params.prompt
-    };
+      const result = await response.json();
+      
+      return {
+        imageURL: `/${targetPath}`,
+        prompt: params.prompt
+      };
+    } catch (error) {
+      console.error('Error generating image:', error);
+      throw new Error('Failed to generate educational image');
+    }
   }
 
   private createEducationalImagePrompt(topic: string, level: string, type: string): string {

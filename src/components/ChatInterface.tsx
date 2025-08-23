@@ -8,7 +8,6 @@ import MessageBubble from './MessageBubble';
 import ApiKeyModal from './ApiKeyModal';
 import InteractiveSuggestions from './InteractiveSuggestions';
 import TypingIndicator from './TypingIndicator';
-import { ImageGenerationService } from '../services/imageGeneration';
 
 export interface Message {
   id: string;
@@ -136,23 +135,26 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const imageService = new ImageGenerationService();
-      
       const educationLevel = detectEducationLevel(prompt);
       const imageType = detectImageType(prompt);
       
-      const result = await imageService.generateImage({ 
-        prompt,
-        educationLevel,
-        imageType
-      });
+      // Create educational-focused prompt
+      const educationalPrompt = createEducationalImagePrompt(prompt, educationLevel, imageType);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `educational-${imageType}-${timestamp}.jpg`;
+      const targetPath = `src/assets/generated/${filename}`;
+      
+      // This will be replaced with actual Lovable image generation
+      const imageUrl = await generateEducationalImage(educationalPrompt, targetPath);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: `Generated educational ${imageType} for: ${prompt}`,
         role: 'assistant',
         timestamp: new Date(),
-        imageUrl: result.imageURL,
+        imageUrl: imageUrl,
         isImageGeneration: true,
       };
 
@@ -171,6 +173,37 @@ const ChatInterface = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const generateEducationalImage = async (prompt: string, targetPath: string): Promise<string> => {
+    // For demo purposes, return a working external URL
+    // In production, this would use Lovable's native image generation
+    const encodedPrompt = encodeURIComponent(prompt);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
+  };
+
+  const createEducationalImagePrompt = (topic: string, level: string, type: string): string => {
+    const levelStyles = {
+      elementary: 'colorful, simple, cartoon-like, child-friendly, easy to understand',
+      middle: 'clear, engaging, moderately detailed, age-appropriate, educational',
+      high: 'detailed, realistic, scientifically accurate, professional, informative',
+      college: 'technical, precise, academic quality, research-grade, comprehensive',
+      adult: 'professional, clean, business-appropriate, informative, sophisticated'
+    };
+
+    const typeDescriptions = {
+      diagram: 'clear technical diagram with labeled parts and connections',
+      illustration: 'detailed educational illustration with visual clarity',
+      infographic: 'informative infographic with data visualization elements',
+      chart: 'clear chart or graph showing relationships and data points',
+      concept: 'conceptual visualization explaining abstract ideas clearly'
+    };
+
+    const basePrompt = `Educational ${type} about "${topic}"`;
+    const styleGuide = levelStyles[level as keyof typeof levelStyles];
+    const typeGuide = typeDescriptions[type as keyof typeof typeDescriptions];
+
+    return `${basePrompt}, ${styleGuide} style. Create a ${typeGuide}. Focus on clarity, accuracy, and educational value. Include relevant labels and visual elements that enhance learning. High quality, well-designed, educational content.`;
   };
 
   const sendMessage = async () => {
